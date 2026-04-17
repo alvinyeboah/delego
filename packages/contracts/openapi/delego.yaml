@@ -1,0 +1,23 @@
+openapi: 3.0.3
+info:
+  title: Delego API Contract
+  version: 1.0.0
+paths:
+  /auth/login:
+    post:
+      summary: Login
+      responses:
+        '200':
+          description: OK
+  /task/workspace/{workspaceId}:
+    get:
+      summary: List tasks for workspace
+      parameters:
+        - in: path
+          name: workspaceId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK

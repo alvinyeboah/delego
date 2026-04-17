@@ -1,0 +1,40 @@
+import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
+import { IdentityAccessModule } from './modules/identity-access/identity-access.module';
+import { TenantOrgModule } from './modules/tenant-org/tenant-org.module';
+import { AuditComplianceModule } from './modules/audit-compliance/audit-compliance.module';
+import { TaskModule } from './modules/task/task.module';
+import { CaptureIntakeModule } from './modules/capture-intake/capture-intake.module';
+import { AssignmentDispatchModule } from './modules/assignment-dispatch/assignment-dispatch.module';
+import { NotificationModule } from './modules/notification/notification.module';
+import { SyncModule } from './modules/sync/sync.module';
+import { AnalyticsEventModule } from './modules/analytics-event/analytics-event.module';
+import { PrismaModule } from './common/prisma/prisma.module';
+
+@Module({
+  imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60_000,
+        limit: 120,
+      },
+    ]),
+    PrismaModule,
+    IdentityAccessModule,
+    TenantOrgModule,
+    AuditComplianceModule,
+    TaskModule,
+    CaptureIntakeModule,
+    AssignmentDispatchModule,
+    NotificationModule,
+    SyncModule,
+    AnalyticsEventModule,
+  ],
+  controllers: [AppController],
+  providers: [AppService],
+})
+export class AppModule {}

@@ -1,0 +1,253 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TaskStatus {
+  OPEN
+  IN_PROGRESS
+  BLOCKED
+  DONE
+  CANCELLED
+  REVIEW_REQUIRED
+}
+
+enum PriorityLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+model Tenant {
+  id             String         @id @default(cuid())
+  name           String
+  organizations  Organization[]
+  users          User[]
+  roles          Role[]
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+}
+
+model Organization {
+  id          String      @id @default(cuid())
+  tenantId    String
+  name        String
+  tenant      Tenant      @relation(fields: [tenantId], references: [id])
+  workspaces  Workspace[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+model Workspace {
+  id             String           @id @default(cuid())
+  organizationId String
+  name           String
+  organization   Organization     @relation(fields: [organizationId], references: [id])
+  tasks          Task[]
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+}
+
+model User {
+  id              String               @id @default(cuid())
+  tenantId        String
+  email           String               @unique
+  passwordHash    String
+  firstName       String
+  lastName        String
+  tenant          Tenant               @relation(fields: [tenantId], references: [id])
+  roleAssignments UserRoleAssignment[]
+  deviceTokens    DeviceToken[]
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+}
+
+model Role {
+  id              String               @id @default(cuid())
+  tenantId        String
+  name            String
+  tenant          Tenant               @relation(fields: [tenantId], references: [id])
+  permissions     RolePermission[]
+  assignments     UserRoleAssignment[]
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+}
+
+model Permission {
+  id          String            @id @default(cuid())
+  key         String            @unique
+  description String?
+  roles       RolePermission[]
+}
+
+model RolePermission {
+  id           String     @id @default(cuid())
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id])
+  permission   Permission @relation(fields: [permissionId], references: [id])
+
+  @@unique([roleId, permissionId])
+}
+
+model UserRoleAssignment {
+  id     String @id @default(cuid())
+  userId String
+  roleId String
+  user   User   @relation(fields: [userId], references: [id])
+  role   Role   @relation(fields: [roleId], references: [id])
+
+  @@unique([userId, roleId])
+}
+
+model Task {
+  id              String             @id @default(cuid())
+  workspaceId     String
+  title           String
+  description     String?
+  status          TaskStatus         @default(OPEN)
+  priority        PriorityLevel      @default(MEDIUM)
+  assigneeUserId  String?
+  version         Int                @default(1)
+  workspace       Workspace          @relation(fields: [workspaceId], references: [id])
+  statusHistory   TaskStatusHistory[]
+  priorityScores  TaskPriorityScore[]
+  comments        TaskComment[]
+  attachments     TaskAttachment[]
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+}
+
+model TaskStatusHistory {
+  id        String     @id @default(cuid())
+  taskId    String
+  status    TaskStatus
+  reason    String?
+  task      Task       @relation(fields: [taskId], references: [id])
+  createdAt DateTime   @default(now())
+}
+
+model TaskPriorityScore {
+  id              String    @id @default(cuid())
+  taskId          String
+  score           Float
+  confidence      Float
+  explanation     String?
+  modelVersion    String?
+  task            Task      @relation(fields: [taskId], references: [id])
+  createdAt       DateTime  @default(now())
+}
+
+model TaskComment {
+  id        String   @id @default(cuid())
+  taskId    String
+  message   String
+  task      Task     @relation(fields: [taskId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+model TaskAttachment {
+  id         String   @id @default(cuid())
+  taskId     String
+  storageKey String
+  mimeType   String
+  task       Task     @relation(fields: [taskId], references: [id])
+  createdAt  DateTime @default(now())
+}
+
+model CaptureSession {
+  id          String          @id @default(cuid())
+  workspaceId String
+  createdById String
+  images      CaptureImage[]
+  metadata    CaptureMetadata?
+  createdAt   DateTime        @default(now())
+}
+
+model CaptureImage {
+  id               String         @id @default(cuid())
+  captureSessionId String
+  storageKey       String
+  ocrText          String?
+  captureSession   CaptureSession @relation(fields: [captureSessionId], references: [id])
+  createdAt        DateTime       @default(now())
+}
+
+model CaptureMetadata {
+  id               String         @id @default(cuid())
+  captureSessionId String         @unique
+  latitude         Float?
+  longitude        Float?
+  deviceModel      String?
+  capturedAt       DateTime?
+  captureSession   CaptureSession @relation(fields: [captureSessionId], references: [id])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  body      String
+  readAt    DateTime?
+  createdAt DateTime @default(now())
+}
+
+model NotificationPreference {
+  id           String @id @default(cuid())
+  userId       String @unique
+  pushEnabled  Boolean @default(true)
+  emailEnabled Boolean @default(false)
+}
+
+model DeviceToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  platform  String
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  tenantId    String
+  actorUserId String?
+  action      String
+  resource    String
+  resourceId  String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+}
+
+model DomainEventOutbox {
+  id          String    @id @default(cuid())
+  tenantId    String
+  eventType   String
+  payload     Json
+  processedAt DateTime?
+  createdAt   DateTime  @default(now())
+}
+
+model SyncCheckpoint {
+  id           String   @id @default(cuid())
+  userId       String
+  workspaceId  String
+  lastSyncedAt DateTime
+
+  @@unique([userId, workspaceId])
+}
+
+model ConflictRecord {
+  id          String   @id @default(cuid())
+  taskId      String
+  userId      String
+  localVersion Int
+  serverVersion Int
+  resolution  String?
+  createdAt   DateTime @default(now())
+}
