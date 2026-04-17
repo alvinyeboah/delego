@@ -6,9 +6,41 @@ paths:
   /auth/login:
     post:
       summary: Login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
       responses:
         '200':
           description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+  /task:
+    post:
+      summary: Create task
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTaskRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
   /task/workspace/{workspaceId}:
     get:
       summary: List tasks for workspace
@@ -21,3 +53,81 @@ paths:
       responses:
         '200':
           description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Task'
+components:
+  schemas:
+    AuthUser:
+      type: object
+      required: [id, email, tenantId, firstName, lastName]
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        tenantId:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+    AuthResponse:
+      type: object
+      required: [accessToken, refreshToken, user]
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        defaultWorkspaceId:
+          type: string
+          nullable: true
+        user:
+          $ref: '#/components/schemas/AuthUser'
+    CreateTaskRequest:
+      type: object
+      required: [workspaceId, title]
+      properties:
+        workspaceId:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        priority:
+          type: string
+          enum: [LOW, MEDIUM, HIGH, CRITICAL]
+    Task:
+      type: object
+      required: [id, workspaceId, title, status, priority, version, updatedAtIso, createdAtIso]
+      properties:
+        id:
+          type: string
+        workspaceId:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [OPEN, IN_PROGRESS, BLOCKED, DONE, CANCELLED, REVIEW_REQUIRED]
+        priority:
+          type: string
+          enum: [LOW, MEDIUM, HIGH, CRITICAL]
+        assigneeUserId:
+          type: string
+          nullable: true
+        version:
+          type: integer
+        updatedAtIso:
+          type: string
+          format: date-time
+        createdAtIso:
+          type: string
+          format: date-time

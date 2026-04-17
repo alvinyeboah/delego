@@ -9,8 +9,8 @@ export class JobsService {
     private readonly scoringService: ScoringService,
   ) {}
 
-  processCapture(storageKey: string) {
-    const ocr = this.ocrService.extractTextFromImage(storageKey);
+  async processCapture(storageKey: string) {
+    const ocr = await this.ocrService.extractTextFromImage(storageKey);
     const scoring = this.scoringService.scoreTask({
       urgencyWeight: 0.75,
       slaMinutes: 90,

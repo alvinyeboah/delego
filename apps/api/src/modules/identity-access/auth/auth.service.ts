@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import * as bcrypt from 'bcrypt';
+import * as argon2 from 'argon2';
 import { PrismaService } from '../../../common/prisma/prisma.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
@@ -29,7 +29,12 @@ export class AuthService {
     const tenant = await this.prisma.tenant.create({
       data: { name: input.tenantName },
     });
-    const passwordHash = await bcrypt.hash(input.password, 12);
+    const passwordHash = await argon2.hash(input.password, {
+      type: argon2.argon2id,
+      memoryCost: 19_456,
+      timeCost: 2,
+      parallelism: 1,
+    });
     const user = await this.prisma.user.create({
       data: {
         tenantId: tenant.id,
@@ -39,8 +44,27 @@ export class AuthService {
         lastName: input.lastName,
       },
     });
+    const organization = await this.prisma.organization.create({
+      data: {
+        tenantId: tenant.id,
+        name: `${tenant.name} Organization`,
+      },
+    });
+    const workspace = await this.prisma.workspace.create({
+      data: {
+        organizationId: organization.id,
+        name: 'Default Workspace',
+      },
+    });
 
-    return this.issueTokens(user.id, user.email, user.tenantId);
+    return this.issueTokens({
+      userId: user.id,
+      email: user.email,
+      tenantId: user.tenantId,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      defaultWorkspaceId: workspace.id,
+    });
   }
 
   async login(input: LoginDto) {
@@ -50,15 +74,37 @@ export class AuthService {
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
     }
-    const valid = await bcrypt.compare(input.password, user.passwordHash);
+    const valid = await argon2.verify(user.passwordHash, input.password);
     if (!valid) {
       throw new UnauthorizedException('Invalid credentials');
     }
-    return this.issueTokens(user.id, user.email, user.tenantId);
+    const workspace = await this.prisma.workspace.findFirst({
+      where: { organization: { tenantId: user.tenantId } },
+      orderBy: { createdAt: 'asc' },
+    });
+    return this.issueTokens({
+      userId: user.id,
+      email: user.email,
+      tenantId: user.tenantId,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      defaultWorkspaceId: workspace?.id ?? null,
+    });
   }
 
-  private issueTokens(userId: string, email: string, tenantId: string) {
-    const payload = { sub: userId, email, tenantId };
+  private issueTokens(input: {
+    userId: string;
+    email: string;
+    tenantId: string;
+    firstName: string;
+    lastName: string;
+    defaultWorkspaceId: string | null;
+  }) {
+    const payload = {
+      sub: input.userId,
+      email: input.email,
+      tenantId: input.tenantId,
+    };
     const accessToken = this.jwt.sign(payload, {
       secret: this.config.getOrThrow<string>('JWT_ACCESS_SECRET'),
       expiresIn: (this.config.get<string>('JWT_ACCESS_TTL') ?? '15m') as never,
@@ -67,6 +113,17 @@ export class AuthService {
       secret: this.config.getOrThrow<string>('JWT_REFRESH_SECRET'),
       expiresIn: (this.config.get<string>('JWT_REFRESH_TTL') ?? '30d') as never,
     });
-    return { accessToken, refreshToken };
+    return {
+      accessToken,
+      refreshToken,
+      user: {
+        id: input.userId,
+        email: input.email,
+        tenantId: input.tenantId,
+        firstName: input.firstName,
+        lastName: input.lastName,
+      },
+      defaultWorkspaceId: input.defaultWorkspaceId,
+    };
   }
 }

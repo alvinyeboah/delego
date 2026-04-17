@@ -9,6 +9,8 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../identity-access/auth/guards/jwt-auth.guard';
 import { TaskService } from './task.service';
+import { CreateTaskDto } from './dto/create-task.dto';
+import { UpdateTaskStatusDto } from './dto/update-task-status.dto';
 
 @Controller('task')
 @UseGuards(JwtAuthGuard)
@@ -21,32 +23,14 @@ export class TaskController {
   }
 
   @Post()
-  create(
-    @Body()
-    body: {
-      workspaceId: string;
-      title: string;
-      description?: string;
-      priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
-    },
-  ) {
+  create(@Body() body: CreateTaskDto) {
     return this.taskService.create(body);
   }
 
   @Patch(':taskId/status')
   updateStatus(
     @Param('taskId') taskId: string,
-    @Body()
-    body: {
-      status:
-        | 'OPEN'
-        | 'IN_PROGRESS'
-        | 'BLOCKED'
-        | 'DONE'
-        | 'CANCELLED'
-        | 'REVIEW_REQUIRED';
-      reason?: string;
-    },
+    @Body() body: UpdateTaskStatusDto,
   ) {
     return this.taskService.updateStatus(taskId, body.status, body.reason);
   }

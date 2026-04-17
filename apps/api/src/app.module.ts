@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
+import * as Joi from 'joi';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { IdentityAccessModule } from './modules/identity-access/identity-access.module';
@@ -16,7 +17,18 @@ import { PrismaModule } from './common/prisma/prisma.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      validationSchema: Joi.object({
+        PORT: Joi.number().default(3000),
+        DATABASE_URL: Joi.string().uri().required(),
+        JWT_ACCESS_SECRET: Joi.string().min(16).required(),
+        JWT_REFRESH_SECRET: Joi.string().min(16).required(),
+        JWT_ACCESS_TTL: Joi.string().default('15m'),
+        JWT_REFRESH_TTL: Joi.string().default('30d'),
+        CORS_ORIGINS: Joi.string().optional(),
+      }),
+    }),
     ThrottlerModule.forRoot([
       {
         ttl: 60_000,

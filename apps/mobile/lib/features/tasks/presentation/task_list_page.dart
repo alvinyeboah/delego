@@ -1,13 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:uuid/uuid.dart';
 
+import '../../../app.dart';
 import '../data/task_repository.dart';
 import '../domain/task_item.dart';
 
-final _repoProvider = Provider<TaskRepository>((_) => TaskRepository());
+final _repoProvider = Provider<TaskRepository>((ref) {
+  return TaskRepository(ref.read(apiClientProvider));
+});
 final _tasksProvider = FutureProvider<List<TaskItem>>((ref) {
-  return ref.read(_repoProvider).getLocalTasks('default-workspace');
+  final session = ref.watch(authSessionProvider);
+  final workspaceId = session?.defaultWorkspaceId;
+  if (workspaceId == null) {
+    return <TaskItem>[];
+  }
+  return ref.read(_repoProvider).getRemoteTasks(workspaceId);
 });
 
 class TaskListPage extends ConsumerWidget {
@@ -17,17 +24,71 @@ class TaskListPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final tasksAsync = ref.watch(_tasksProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Delego Tasks')),
+      appBar: AppBar(
+        title: const Text('Operations Board'),
+        actions: [
+          IconButton(
+            onPressed: () {
+              ref.read(authSessionProvider.notifier).state = null;
+            },
+            icon: const Icon(Icons.logout_rounded),
+          ),
+        ],
+      ),
       body: tasksAsync.when(
-        data: (tasks) => ListView.builder(
-          itemCount: tasks.length,
-          itemBuilder: (context, index) {
-            final task = tasks[index];
-            return ListTile(
-              title: Text(task.title),
-              subtitle: Text('${task.status} - ${task.priority}'),
-            );
-          },
+        data: (tasks) => Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Active Tasks', style: Theme.of(context).textTheme.headlineSmall),
+              const SizedBox(height: 12),
+              Expanded(
+                child: ListView.separated(
+                  itemCount: tasks.length,
+                  separatorBuilder: (_, index) => const SizedBox(height: 10),
+                  itemBuilder: (context, index) {
+                    final task = tasks[index];
+                    return Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(14),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 8,
+                              height: 48,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(99),
+                                gradient: const LinearGradient(
+                                  colors: [Color(0xFF7C5CFF), Color(0xFF22D3EE)],
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(task.title, style: Theme.of(context).textTheme.bodyLarge),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '${task.status} · ${task.priority}',
+                                    style: Theme.of(context).textTheme.bodyMedium,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
         ),
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => Center(child: Text('Error: $error')),
@@ -35,17 +96,17 @@ class TaskListPage extends ConsumerWidget {
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
           final repo = ref.read(_repoProvider);
+          final session = ref.read(authSessionProvider);
+          final workspaceId = session?.defaultWorkspaceId;
+          if (workspaceId == null) {
+            return;
+          }
           final now = DateTime.now().toIso8601String();
-          await repo.upsertTask(
-            TaskItem(
-              id: const Uuid().v4(),
-              title: 'Field task at $now',
-              status: 'OPEN',
-              priority: 'MEDIUM',
-              workspaceId: 'default-workspace',
-              updatedAtIso: now,
-            ),
+          final created = await repo.createRemoteTask(
+            workspaceId: workspaceId,
+            title: 'Field task at $now',
           );
+          await repo.upsertTask(created);
           ref.invalidate(_tasksProvider);
         },
         child: const Icon(Icons.add),

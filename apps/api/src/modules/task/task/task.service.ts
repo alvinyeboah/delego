@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../common/prisma/prisma.service';
 import { TaskGateway } from './task.gateway';
+import { CreateTaskDto } from './dto/create-task.dto';
 
 @Injectable()
 export class TaskService {
@@ -10,24 +11,42 @@ export class TaskService {
     private readonly taskGateway: TaskGateway,
   ) {}
 
-  list(workspaceId: string) {
-    return this.prisma.task.findMany({
+  async list(workspaceId: string) {
+    const tasks = await this.prisma.task.findMany({
       where: { workspaceId },
       orderBy: { createdAt: 'desc' },
       include: { priorityScores: true, attachments: true, comments: true },
     });
+    return tasks.map((task) => ({
+      id: task.id,
+      workspaceId: task.workspaceId,
+      title: task.title,
+      description: task.description,
+      status: task.status,
+      priority: task.priority,
+      assigneeUserId: task.assigneeUserId,
+      version: task.version,
+      updatedAtIso: task.updatedAt.toISOString(),
+      createdAtIso: task.createdAt.toISOString(),
+    }));
   }
 
-  create(input: {
-    workspaceId: string;
-    title: string;
-    description?: string;
-    priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
-  }) {
-    return this.prisma.task.create({ data: input }).then((task: unknown) => {
-      this.taskGateway.notifyTaskUpdated(task as Record<string, unknown>);
-      return task;
-    });
+  async create(input: CreateTaskDto) {
+    const task = await this.prisma.task.create({ data: input });
+    const payload = {
+      id: task.id,
+      workspaceId: task.workspaceId,
+      title: task.title,
+      description: task.description,
+      status: task.status,
+      priority: task.priority,
+      assigneeUserId: task.assigneeUserId,
+      version: task.version,
+      updatedAtIso: task.updatedAt.toISOString(),
+      createdAtIso: task.createdAt.toISOString(),
+    };
+    this.taskGateway.notifyTaskUpdated(payload);
+    return payload;
   }
 
   updateStatus(
@@ -47,8 +66,20 @@ export class TaskService {
         data: { status, version: { increment: 1 } },
       });
       await tx.taskStatusHistory.create({ data: { taskId, status, reason } });
-      this.taskGateway.notifyTaskUpdated(task as Record<string, unknown>);
-      return task;
+      const payload = {
+        id: task.id,
+        workspaceId: task.workspaceId,
+        title: task.title,
+        description: task.description,
+        status: task.status,
+        priority: task.priority,
+        assigneeUserId: task.assigneeUserId,
+        version: task.version,
+        updatedAtIso: task.updatedAt.toISOString(),
+        createdAtIso: task.createdAt.toISOString(),
+      };
+      this.taskGateway.notifyTaskUpdated(payload);
+      return payload;
     });
   }
 }
