@@ -21,6 +21,18 @@ Delego is a cross-platform operations task platform with:
   - `npm run dev:api`
   - `npm run dev:worker`
 
+## Docker Compose Stack
+
+Single-stack backend deploy file:
+- `infra/docker/docker-compose.yml`
+
+Environment presets:
+- Staging: `.env.staging`
+- Production: `.env.prod`
+
+Run locally with a target env file:
+- `docker-compose --env-file .env.staging -f infra/docker/docker-compose.yml up --build`
+
 ## Architecture
 
 See `docs/architecture/architecture.md`.
