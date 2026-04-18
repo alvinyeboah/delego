@@ -10,7 +10,7 @@ services:
     ports:
       - "5434:5432"
     volumes:
-      - delego_postgres_data:/var/lib/postgresql/data
+      - delego_postgres_data_v2:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U delego -d delego"]
       interval: 5s
@@ -74,4 +74,4 @@ services:
       - "${WORKER_PUBLIC_PORT:-3010}:${WORKER_PORT:-3010}"
 
 volumes:
-  delego_postgres_data:
+  delego_postgres_data_v2:
