@@ -15,3 +15,7 @@ android/.gradle
 apps/mobile/.dart_tool
 apps/mobile/build
 apps/mobile/.packages
+
+# Local Flutter SDK symlinks (absolute paths; use global Flutter on PATH)
+.tooling/flutter
+.tooling/flutter-sdk

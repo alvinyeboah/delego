@@ -28,4 +28,33 @@ class AuthRepository {
       defaultWorkspaceId: body['defaultWorkspaceId'] as String?,
     );
   }
+
+  Future<AuthSession> register({
+    required String email,
+    required String password,
+    required String firstName,
+    required String lastName,
+    required String tenantName,
+  }) async {
+    final response = await _apiClient.post(
+      '/auth/register',
+      data: {
+        'email': email.trim().toLowerCase(),
+        'password': password,
+        'firstName': firstName.trim(),
+        'lastName': lastName.trim(),
+        'tenantName': tenantName.trim(),
+      },
+    );
+    final body = response.data as Map<String, dynamic>;
+    final user = body['user'] as Map<String, dynamic>;
+    return AuthSession(
+      accessToken: body['accessToken'] as String,
+      refreshToken: body['refreshToken'] as String,
+      userId: user['id'] as String,
+      email: user['email'] as String,
+      tenantId: user['tenantId'] as String,
+      defaultWorkspaceId: body['defaultWorkspaceId'] as String?,
+    );
+  }
 }
