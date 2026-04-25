@@ -1,3 +1,5 @@
+import '../../../core/api/api_models.dart';
+import '../../../core/api/delego_json.dart';
 import '../../../core/network/api_client.dart';
 import '../domain/auth_session.dart';
 
@@ -17,8 +19,8 @@ class AuthRepository {
         'password': password,
       },
     );
-    final body = response.data as Map<String, dynamic>;
-    final user = body['user'] as Map<String, dynamic>;
+    final body = asStringKeyedMap(response.data, 'POST /auth/login');
+    final user = asStringKeyedMap(body['user'], 'POST /auth/login user');
     return AuthSession(
       accessToken: body['accessToken'] as String,
       refreshToken: body['refreshToken'] as String,
@@ -46,8 +48,8 @@ class AuthRepository {
         'tenantName': tenantName.trim(),
       },
     );
-    final body = response.data as Map<String, dynamic>;
-    final user = body['user'] as Map<String, dynamic>;
+    final body = asStringKeyedMap(response.data, 'POST /auth/register');
+    final user = asStringKeyedMap(body['user'], 'POST /auth/register user');
     return AuthSession(
       accessToken: body['accessToken'] as String,
       refreshToken: body['refreshToken'] as String,
@@ -56,5 +58,10 @@ class AuthRepository {
       tenantId: user['tenantId'] as String,
       defaultWorkspaceId: body['defaultWorkspaceId'] as String?,
     );
+  }
+
+  Future<JwtMeDto> me() async {
+    final response = await _apiClient.get('/auth/me');
+    return JwtMeDto.fromJson(asStringKeyedMap(response.data, 'GET /auth/me'));
   }
 }

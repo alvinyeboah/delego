@@ -48,6 +48,10 @@ services:
       JWT_ACCESS_TTL: ${JWT_ACCESS_TTL:-15m}
       JWT_REFRESH_TTL: ${JWT_REFRESH_TTL:-30d}
       CORS_ORIGINS: ${CORS_ORIGINS}
+      MEDIA_ROOT: ${MEDIA_ROOT:-/data/media}
+      WORKER_URL: ${WORKER_URL:-http://worker:3010}
+    volumes:
+      - delego_media:/data/media
     ports:
       - "${API_PUBLIC_PORT:-3000}:${API_PORT:-3000}"
 
@@ -70,8 +74,12 @@ services:
       REDIS_HOST: ${REDIS_HOST:-redis}
       REDIS_PORT: ${REDIS_PORT:-6379}
       OCR_PROVIDER: ${OCR_PROVIDER:-tesseract}
+      MEDIA_ROOT: ${MEDIA_ROOT:-/data/media}
+    volumes:
+      - delego_media:/data/media
     ports:
       - "${WORKER_PUBLIC_PORT:-3010}:${WORKER_PORT:-3010}"
 
 volumes:
   delego_postgres_data_v2:
+  delego_media:

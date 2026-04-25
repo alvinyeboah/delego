@@ -1,30 +1,41 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'core/config/app_config.dart';
-import 'core/network/api_client.dart';
+import 'core/branding/delego_brand.dart';
 import 'core/theme/app_theme.dart';
-import 'features/auth/domain/auth_session.dart';
+export 'features/auth/auth_providers.dart';
+import 'features/auth/auth_providers.dart';
 import 'features/auth/presentation/login_page.dart';
-import 'features/tasks/presentation/task_list_page.dart';
+import 'features/shell/app_shell.dart';
 
-final apiClientProvider = Provider<ApiClient>((_) {
-  return ApiClient(baseUrl: AppConfig.apiBaseUrl);
-});
-
-final authSessionProvider = StateProvider<AuthSession?>((_) => null);
-
-class DelegoApp extends ConsumerWidget {
+class DelegoApp extends ConsumerStatefulWidget {
   const DelegoApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DelegoApp> createState() => _DelegoAppState();
+}
+
+class _DelegoAppState extends ConsumerState<DelegoApp> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!kIsWeb) {
+        FlutterNativeSplash.remove();
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final session = ref.watch(authSessionProvider);
     ref.read(apiClientProvider).setBearerToken(session?.accessToken);
     return MaterialApp(
-      title: 'Delego',
+      title: kAppDisplayName,
       theme: AppTheme.darkElite(),
-      home: session != null ? const TaskListPage() : const LoginPage(),
+      home: session != null ? const AppShell() : const LoginPage(),
     );
   }
 }

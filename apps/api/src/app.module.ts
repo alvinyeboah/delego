@@ -13,6 +13,8 @@ import { AssignmentDispatchModule } from './modules/assignment-dispatch/assignme
 import { NotificationModule } from './modules/notification/notification.module';
 import { SyncModule } from './modules/sync/sync.module';
 import { AnalyticsEventModule } from './modules/analytics-event/analytics-event.module';
+import { DeviceTokenModule } from './modules/device-token/device-token.module';
+import { MediaModule } from './modules/media/media.module';
 import { PrismaModule } from './common/prisma/prisma.module';
 
 @Module({
@@ -27,6 +29,8 @@ import { PrismaModule } from './common/prisma/prisma.module';
         JWT_ACCESS_TTL: Joi.string().default('15m'),
         JWT_REFRESH_TTL: Joi.string().default('30d'),
         CORS_ORIGINS: Joi.string().optional(),
+        MEDIA_ROOT: Joi.string().optional(),
+        WORKER_URL: Joi.string().uri().optional(),
       }),
     }),
     ThrottlerModule.forRoot([
@@ -41,6 +45,8 @@ import { PrismaModule } from './common/prisma/prisma.module';
     AuditComplianceModule,
     TaskModule,
     CaptureIntakeModule,
+    MediaModule,
+    DeviceTokenModule,
     AssignmentDispatchModule,
     NotificationModule,
     SyncModule,

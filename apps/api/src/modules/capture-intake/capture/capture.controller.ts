@@ -1,5 +1,6 @@
-import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../../identity-access/auth/guards/jwt-auth.guard';
+import type { JwtPayload } from '../../identity-access/auth/strategies/jwt.strategy';
 import { CaptureService } from './capture.service';
 
 @Controller('capture')
@@ -9,10 +10,11 @@ export class CaptureController {
 
   @Post('session')
   createSession(
+    @Req() req: { user: JwtPayload },
     @Body()
     body: {
       workspaceId: string;
-      createdById: string;
+      createdById?: string;
       latitude?: number;
       longitude?: number;
       deviceModel?: string;
@@ -20,6 +22,18 @@ export class CaptureController {
       imageStorageKey: string;
     },
   ) {
-    return this.captureService.createSession(body);
+    return this.captureService.createSession({
+      ...body,
+      createdById: req.user.sub,
+    });
+  }
+
+  @Post('pipeline/run')
+  runPipeline(@Body() body: { storageKey: string }) {
+    const key = body?.storageKey?.trim();
+    if (!key) {
+      throw new BadRequestException('storageKey is required');
+    }
+    return this.captureService.runWorkerPipeline(key);
   }
 }

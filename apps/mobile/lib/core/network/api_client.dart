@@ -29,4 +29,25 @@ class ApiClient {
   Future<Response<dynamic>> post(String path, {Object? data}) {
     return _dio.post(path, data: data);
   }
+
+  Future<Response<dynamic>> patch(String path, {Object? data}) {
+    return _dio.patch(path, data: data);
+  }
+
+  Future<Response<dynamic>> delete(String path) {
+    return _dio.delete(path);
+  }
+
+  /// Multipart upload; do not force JSON `Content-Type` (Dio sets boundary for [FormData]).
+  Future<Response<dynamic>> postMultipart(String path, FormData data) {
+    return _dio.post(
+      path,
+      data: data,
+      options: Options(
+        receiveTimeout: const Duration(minutes: 2),
+        sendTimeout: const Duration(minutes: 2),
+        headers: <String, dynamic>{..._dio.options.headers}..remove(Headers.contentTypeHeader),
+      ),
+    );
+  }
 }
